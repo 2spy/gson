@@ -20,6 +20,9 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonIOException;
 import com.google.gson.JsonNull;
 import com.google.gson.JsonParseException;
+import com.google.gson.JsonPrimitive;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import com.google.gson.JsonSyntaxException;
 import com.google.gson.internal.bind.TypeAdapters;
 import com.google.gson.stream.JsonReader;
@@ -29,10 +32,10 @@ import com.google.gson.stream.MalformedJsonException;
 import java.io.EOFException;
 import java.io.IOException;
 import java.io.Writer;
+import java.util.Map;
 import com.google.gson.api.JsonElementInterface;
 import com.google.gson.api.JsonProcessor;
 import java.util.Objects;
-
 
 /** Reads and writes GSON parse trees over streams. */
 public final class Streams {
@@ -76,26 +79,42 @@ public final class Streams {
       writer.nullValue();
       return;
     }
+
     if (element.isJsonPrimitive()) {
-      TypeAdapters.JSON_ELEMENT.write(writer, element);
+      writeJsonPrimitive(element, writer);
     } else if (element.isJsonArray()) {
-      writer.beginArray();
-      for (JsonElement e : element.getAsJsonArray()) {
-        writeInternal(e, writer);
-      }
-      writer.endArray();
+      writeJsonArray(element.getAsJsonArray(), writer);
     } else if (element.isJsonObject()) {
-      writer.beginObject();
-      for (String name : element.getAsJsonObject().keySet()) {
-        writer.name(name);
-        writeInternal(element.getAsJsonObject().get(name), writer);
-      }
-      writer.endObject();
+      writeJsonObject(element.getAsJsonObject(), writer);
     } else if (element.isJsonNull()) {
       writer.nullValue();
     } else {
       throw new JsonIOException("Unexpected JSON element type: " + element.getClass());
     }
+  }
+
+  // Nouvelle méthode pour écrire les primitives
+  private static void writeJsonPrimitive(JsonElement element, JsonWriter writer) throws IOException {
+    TypeAdapters.JSON_ELEMENT.write(writer, element);
+  }
+
+  // Nouvelle méthode pour écrire les tableaux
+  private static void writeJsonArray(JsonArray array, JsonWriter writer) throws IOException {
+    writer.beginArray();
+    for (JsonElement e : array) {
+      writeInternal(e, writer);
+    }
+    writer.endArray();
+  }
+
+  // Nouvelle méthode pour écrire les objets
+  private static void writeJsonObject(JsonObject object, JsonWriter writer) throws IOException {
+    writer.beginObject();
+    for (String name : object.keySet()) {
+      writer.name(name);
+      writeInternal(object.get(name), writer);
+    }
+    writer.endObject();
   }
 
   public static Writer writerForAppendable(Appendable appendable) {

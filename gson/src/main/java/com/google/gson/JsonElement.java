@@ -151,50 +151,59 @@ public abstract class JsonElement implements JsonElementInterface {
   }
 
   /**
-   * Convenience method to get this element as a {@link JsonObject}. If this element is of some
-   * other type, an {@link IllegalStateException} will result. Hence it is best to use this method
-   * after ensuring that this element is of the desired type by calling {@link #isJsonObject()}
-   * first.
+   * Convenience method to get this element as a {@link JsonObject}. If this element is of some other
+   * type, a {@link JsonElementTypeException} will result. Hence it is best to use this method after
+   * ensuring that this element is of the desired type by calling {@link #isJsonObject()} first.
    *
    * @return this element as a {@link JsonObject}.
-   * @throws IllegalStateException if this element is of another type.
+   * @throws JsonElementTypeException if this element is of another type.
    */
   public JsonObject getAsJsonObject() {
     if (isJsonObject()) {
       return (JsonObject) this;
     }
-    throw new IllegalStateException("Not a JSON Object: " + this);
+    String actualType = isJsonArray() ? "JsonArray" :
+            isJsonPrimitive() ? "JsonPrimitive" :
+                    isJsonNull() ? "JsonNull" : "unknown";
+    throw new JsonElementTypeException("JsonObject", actualType);
   }
 
   /**
    * Convenience method to get this element as a {@link JsonArray}. If this element is of some other
-   * type, an {@link IllegalStateException} will result. Hence it is best to use this method after
+   * type, a {@link JsonElementTypeException} will result. Hence it is best to use this method after
    * ensuring that this element is of the desired type by calling {@link #isJsonArray()} first.
    *
    * @return this element as a {@link JsonArray}.
-   * @throws IllegalStateException if this element is of another type.
+   * @throws JsonElementTypeException if this element is of another type.
    */
   public JsonArray getAsJsonArray() {
     if (isJsonArray()) {
       return (JsonArray) this;
     }
-    throw new IllegalStateException("Not a JSON Array: " + this);
+    String actualType = isJsonObject() ? "JsonObject" :
+            isJsonPrimitive() ? "JsonPrimitive" :
+                    isJsonNull() ? "JsonNull" : "unknown";
+    throw new JsonElementTypeException("JsonArray", actualType);
   }
 
+
+
   /**
-   * Convenience method to get this element as a {@link JsonPrimitive}. If this element is of some
-   * other type, an {@link IllegalStateException} will result. Hence it is best to use this method
-   * after ensuring that this element is of the desired type by calling {@link #isJsonPrimitive()}
-   * first.
+   * Convenience method to get this element as a {@link JsonPrimitive}. If this element is of some other
+   * type, a {@link JsonElementTypeException} will result. Hence it is best to use this method after
+   * ensuring that this element is of the desired type by calling {@link #isJsonPrimitive()} first.
    *
    * @return this element as a {@link JsonPrimitive}.
-   * @throws IllegalStateException if this element is of another type.
+   * @throws JsonElementTypeException if this element is of another type.
    */
   public JsonPrimitive getAsJsonPrimitive() {
     if (isJsonPrimitive()) {
       return (JsonPrimitive) this;
     }
-    throw new IllegalStateException("Not a JSON Primitive: " + this);
+    String actualType = isJsonObject() ? "JsonObject" :
+            isJsonArray() ? "JsonArray" :
+                    isJsonNull() ? "JsonNull" : "unknown";
+    throw new JsonElementTypeException("JsonPrimitive", actualType);
   }
 
   /**
