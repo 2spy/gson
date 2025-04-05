@@ -15,7 +15,7 @@
  */
 
 package com.google.gson;
-
+import com.google.gson.api.JsonProcessor;
 import com.google.gson.annotations.JsonAdapter;
 import com.google.gson.internal.ConstructorConstructor;
 import com.google.gson.internal.Excluder;
@@ -148,7 +148,7 @@ import java.util.concurrent.atomic.AtomicLongArray;
  * @author Joel Leitch
  * @author Jesse Wilson
  */
-public final class Gson {
+public final class Gson implements JsonProcessor  {
 
   static final boolean DEFAULT_JSON_NON_EXECUTABLE = false;
   // Strictness of `null` is the legacy mode where some Gson APIs are always lenient

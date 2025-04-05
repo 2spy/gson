@@ -24,6 +24,7 @@ import java.io.Reader;
 import java.io.StringWriter;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import com.google.gson.api.JsonElementInterface;
 
 /**
  * A class representing an element of JSON. It could either be a {@link JsonObject}, a {@link
@@ -95,7 +96,7 @@ import java.math.BigInteger;
  * @author Inderjeet Singh
  * @author Joel Leitch
  */
-public abstract class JsonElement {
+public abstract class JsonElement implements JsonElementInterface {
   /**
    * @deprecated Creating custom {@code JsonElement} subclasses is highly discouraged and can lead
    *     to undefined behavior.<br>

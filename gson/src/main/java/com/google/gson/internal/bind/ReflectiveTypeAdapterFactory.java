@@ -16,21 +16,15 @@
 
 package com.google.gson.internal.bind;
 
-import com.google.gson.FieldNamingStrategy;
-import com.google.gson.Gson;
-import com.google.gson.JsonIOException;
-import com.google.gson.JsonParseException;
-import com.google.gson.JsonSyntaxException;
-import com.google.gson.ReflectionAccessFilter;
+import com.google.gson.*;
 import com.google.gson.ReflectionAccessFilter.FilterResult;
-import com.google.gson.TypeAdapter;
-import com.google.gson.TypeAdapterFactory;
 import com.google.gson.annotations.JsonAdapter;
 import com.google.gson.annotations.SerializedName;
 import com.google.gson.internal.$Gson$Types;
 import com.google.gson.internal.ConstructorConstructor;
 import com.google.gson.internal.Excluder;
 import com.google.gson.internal.ObjectConstructor;
+import com.google.gson.api.JsonProcessor;
 import com.google.gson.internal.Primitives;
 import com.google.gson.internal.ReflectionAccessFilterHelper;
 import com.google.gson.internal.TroubleshootingGuide;
@@ -57,7 +51,7 @@ import java.util.List;
 import java.util.Map;
 
 /** Type adapter that reflects over the fields and methods of a class. */
-public final class ReflectiveTypeAdapterFactory implements TypeAdapterFactory {
+public final class ReflectiveTypeAdapterFactory implements TypeAdapterFactory  {
   private final ConstructorConstructor constructorConstructor;
   private final FieldNamingStrategy fieldNamingPolicy;
   private final Excluder excluder;
@@ -65,11 +59,11 @@ public final class ReflectiveTypeAdapterFactory implements TypeAdapterFactory {
   private final List<ReflectionAccessFilter> reflectionFilters;
 
   public ReflectiveTypeAdapterFactory(
-      ConstructorConstructor constructorConstructor,
-      FieldNamingStrategy fieldNamingPolicy,
-      Excluder excluder,
-      JsonAdapterAnnotationTypeAdapterFactory jsonAdapterFactory,
-      List<ReflectionAccessFilter> reflectionFilters) {
+          ConstructorConstructor constructorConstructor,
+          FieldNamingStrategy fieldNamingPolicy,
+          Excluder excluder,
+          JsonAdapterAnnotationTypeAdapterFactory jsonAdapterFactory,
+          List<ReflectionAccessFilter> reflectionFilters) {
     this.constructorConstructor = constructorConstructor;
     this.fieldNamingPolicy = fieldNamingPolicy;
     this.excluder = excluder;
@@ -136,12 +130,12 @@ public final class ReflectiveTypeAdapterFactory implements TypeAdapterFactory {
     }
 
     FilterResult filterResult =
-        ReflectionAccessFilterHelper.getFilterResult(reflectionFilters, raw);
+            ReflectionAccessFilterHelper.getFilterResult(reflectionFilters, raw);
     if (filterResult == FilterResult.BLOCK_ALL) {
       throw new JsonIOException(
-          "ReflectionAccessFilter does not permit using reflection for "
-              + raw
-              + ". Register a TypeAdapter for this type or adjust the access filter.");
+              "ReflectionAccessFilter does not permit using reflection for "
+                      + raw
+                      + ". Register a TypeAdapter for this type or adjust the access filter.");
     }
     boolean blockInaccessible = filterResult == FilterResult.BLOCK_INACCESSIBLE;
 
@@ -150,38 +144,44 @@ public final class ReflectiveTypeAdapterFactory implements TypeAdapterFactory {
     if (ReflectionHelper.isRecord(raw)) {
       @SuppressWarnings("unchecked")
       TypeAdapter<T> adapter =
-          (TypeAdapter<T>)
-              new RecordAdapter<>(
-                  raw, getBoundFields(gson, type, raw, blockInaccessible, true), blockInaccessible);
+              (TypeAdapter<T>)
+                      new RecordAdapter<>(
+                              raw, getBoundFields(gson, type, raw, blockInaccessible, true), blockInaccessible);
       return adapter;
     }
 
     ObjectConstructor<T> constructor = constructorConstructor.get(type, true);
     return new FieldReflectionAdapter<>(
-        constructor, getBoundFields(gson, type, raw, blockInaccessible, false));
+            constructor, getBoundFields(gson, type, raw, blockInaccessible, false));
+  }
+
+  // Implémentation de la méthode pour TypeAdapterFactoryInterface
+  @Override
+  public <T> Object create(Object gson, Type type) {
+    return create((Gson) gson, TypeToken.get(type));
   }
 
   private static <M extends AccessibleObject & Member> void checkAccessible(
-      Object object, M member) {
+          Object object, M member) {
     if (!ReflectionAccessFilterHelper.canAccess(
-        member, Modifier.isStatic(member.getModifiers()) ? null : object)) {
+            member, Modifier.isStatic(member.getModifiers()) ? null : object)) {
       String memberDescription = ReflectionHelper.getAccessibleObjectDescription(member, true);
       throw new JsonIOException(
-          memberDescription
-              + " is not accessible and ReflectionAccessFilter does not permit making it"
-              + " accessible. Register a TypeAdapter for the declaring type, adjust the access"
-              + " filter or increase the visibility of the element and its declaring type.");
+              memberDescription
+                      + " is not accessible and ReflectionAccessFilter does not permit making it"
+                      + " accessible. Register a TypeAdapter for the declaring type, adjust the access"
+                      + " filter or increase the visibility of the element and its declaring type.");
     }
   }
 
   private BoundField createBoundField(
-      Gson context,
-      Field field,
-      Method accessor,
-      String serializedName,
-      TypeToken<?> fieldType,
-      boolean serialize,
-      boolean blockInaccessible) {
+          JsonProcessor context,
+          Field field,
+          Method accessor,
+          String serializedName,
+          TypeToken<?> fieldType,
+          boolean serialize,
+          boolean blockInaccessible) {
 
     boolean isPrimitive = Primitives.isPrimitive(fieldType.getRawType());
 
@@ -193,12 +193,12 @@ public final class ReflectiveTypeAdapterFactory implements TypeAdapterFactory {
     if (annotation != null) {
       // This is not safe; requires that user has specified correct adapter class for @JsonAdapter
       mapped =
-          jsonAdapterFactory.getTypeAdapter(
-              constructorConstructor, context, fieldType, annotation, false);
+              jsonAdapterFactory.getTypeAdapter(
+                      constructorConstructor, (Gson) context, fieldType, annotation, false);
     }
     boolean jsonAdapterPresent = mapped != null;
     if (mapped == null) {
-      mapped = context.getAdapter(fieldType);
+      mapped = ((Gson) context).getAdapter(fieldType);
     }
 
     @SuppressWarnings("unchecked")
@@ -206,9 +206,9 @@ public final class ReflectiveTypeAdapterFactory implements TypeAdapterFactory {
     TypeAdapter<Object> writeTypeAdapter;
     if (serialize) {
       writeTypeAdapter =
-          jsonAdapterPresent
-              ? typeAdapter
-              : new TypeAdapterRuntimeTypeWrapper<>(context, typeAdapter, fieldType.getType());
+              jsonAdapterPresent
+                      ? typeAdapter
+                      : new TypeAdapterRuntimeTypeWrapper<>((Gson) context, typeAdapter, fieldType.getType());
     } else {
       // Will never actually be used, but we set it to avoid confusing nullness-analysis tools
       writeTypeAdapter = typeAdapter;
@@ -232,9 +232,9 @@ public final class ReflectiveTypeAdapterFactory implements TypeAdapterFactory {
             fieldValue = accessor.invoke(source);
           } catch (InvocationTargetException e) {
             String accessorDescription =
-                ReflectionHelper.getAccessibleObjectDescription(accessor, false);
+                    ReflectionHelper.getAccessibleObjectDescription(accessor, false);
             throw new JsonIOException(
-                "Accessor " + accessorDescription + " threw exception", e.getCause());
+                    "Accessor " + accessorDescription + " threw exception", e.getCause());
           }
         } else {
           fieldValue = field.get(source);
@@ -249,21 +249,21 @@ public final class ReflectiveTypeAdapterFactory implements TypeAdapterFactory {
 
       @Override
       void readIntoArray(JsonReader reader, int index, Object[] target)
-          throws IOException, JsonParseException {
+              throws IOException, JsonParseException {
         Object fieldValue = typeAdapter.read(reader);
         if (fieldValue == null && isPrimitive) {
           throw new JsonParseException(
-              "null is not allowed as value for record component '"
-                  + fieldName
-                  + "' of primitive type; at path "
-                  + reader.getPath());
+                  "null is not allowed as value for record component '"
+                          + fieldName
+                          + "' of primitive type; at path "
+                          + reader.getPath());
         }
         target[index] = fieldValue;
       }
 
       @Override
       void readIntoField(JsonReader reader, Object target)
-          throws IOException, IllegalAccessException {
+              throws IOException, IllegalAccessException {
         Object fieldValue = typeAdapter.read(reader);
         if (fieldValue != null || !isPrimitive) {
           if (blockInaccessible) {
@@ -283,7 +283,7 @@ public final class ReflectiveTypeAdapterFactory implements TypeAdapterFactory {
 
   private static class FieldsData {
     public static final FieldsData EMPTY =
-        new FieldsData(Collections.emptyMap(), Collections.emptyList());
+            new FieldsData(Collections.emptyMap(), Collections.emptyList());
 
     /** Maps from JSON member name to field */
     public final Map<String, BoundField> deserializedFields;
@@ -291,29 +291,29 @@ public final class ReflectiveTypeAdapterFactory implements TypeAdapterFactory {
     public final List<BoundField> serializedFields;
 
     public FieldsData(
-        Map<String, BoundField> deserializedFields, List<BoundField> serializedFields) {
+            Map<String, BoundField> deserializedFields, List<BoundField> serializedFields) {
       this.deserializedFields = deserializedFields;
       this.serializedFields = serializedFields;
     }
   }
 
   private static IllegalArgumentException createDuplicateFieldException(
-      Class<?> declaringType, String duplicateName, Field field1, Field field2) {
+          Class<?> declaringType, String duplicateName, Field field1, Field field2) {
     throw new IllegalArgumentException(
-        "Class "
-            + declaringType.getName()
-            + " declares multiple JSON fields named '"
-            + duplicateName
-            + "'; conflict is caused by fields "
-            + ReflectionHelper.fieldToString(field1)
-            + " and "
-            + ReflectionHelper.fieldToString(field2)
-            + "\nSee "
-            + TroubleshootingGuide.createUrl("duplicate-fields"));
+            "Class "
+                    + declaringType.getName()
+                    + " declares multiple JSON fields named '"
+                    + duplicateName
+                    + "'; conflict is caused by fields "
+                    + ReflectionHelper.fieldToString(field1)
+                    + " and "
+                    + ReflectionHelper.fieldToString(field2)
+                    + "\nSee "
+                    + TroubleshootingGuide.createUrl("duplicate-fields"));
   }
 
   private FieldsData getBoundFields(
-      Gson context, TypeToken<?> type, Class<?> raw, boolean blockInaccessible, boolean isRecord) {
+          JsonProcessor context, TypeToken<?> type, Class<?> raw, boolean blockInaccessible, boolean isRecord) {
     if (raw.isInterface()) {
       return FieldsData.EMPTY;
     }
@@ -330,14 +330,14 @@ public final class ReflectiveTypeAdapterFactory implements TypeAdapterFactory {
       // For inherited fields, check if access to their declaring class is allowed
       if (raw != originalRaw && fields.length > 0) {
         FilterResult filterResult =
-            ReflectionAccessFilterHelper.getFilterResult(reflectionFilters, raw);
+                ReflectionAccessFilterHelper.getFilterResult(reflectionFilters, raw);
         if (filterResult == FilterResult.BLOCK_ALL) {
           throw new JsonIOException(
-              "ReflectionAccessFilter does not permit using reflection for "
-                  + raw
-                  + " (supertype of "
-                  + originalRaw
-                  + "). Register a TypeAdapter for this type or adjust the access filter.");
+                  "ReflectionAccessFilter does not permit using reflection for "
+                          + raw
+                          + " (supertype of "
+                          + originalRaw
+                          + "). Register a TypeAdapter for this type or adjust the access filter.");
         }
         blockInaccessible = filterResult == FilterResult.BLOCK_INACCESSIBLE;
       }
@@ -372,11 +372,11 @@ public final class ReflectiveTypeAdapterFactory implements TypeAdapterFactory {
             // accessor method is implicit and has inherited annotation, or if it is explicitly
             // declared with custom annotation
             if (accessor.getAnnotation(SerializedName.class) != null
-                && field.getAnnotation(SerializedName.class) == null) {
+                    && field.getAnnotation(SerializedName.class) == null) {
               String methodDescription =
-                  ReflectionHelper.getAccessibleObjectDescription(accessor, false);
+                      ReflectionHelper.getAccessibleObjectDescription(accessor, false);
               throw new JsonIOException(
-                  "@SerializedName on " + methodDescription + " is not supported");
+                      "@SerializedName on " + methodDescription + " is not supported");
             }
           }
         }
@@ -391,14 +391,14 @@ public final class ReflectiveTypeAdapterFactory implements TypeAdapterFactory {
         List<String> fieldNames = getFieldNames(field);
         String serializedName = fieldNames.get(0);
         BoundField boundField =
-            createBoundField(
-                context,
-                field,
-                accessor,
-                serializedName,
-                TypeToken.get(fieldType),
-                serialize,
-                blockInaccessible);
+                createBoundField(
+                        context,
+                        field,
+                        accessor,
+                        serializedName,
+                        TypeToken.get(fieldType),
+                        serialize,
+                        blockInaccessible);
 
         if (deserialize) {
           for (String name : fieldNames) {
@@ -440,18 +440,18 @@ public final class ReflectiveTypeAdapterFactory implements TypeAdapterFactory {
 
     /** Read this field value from the source, and append its JSON value to the writer */
     abstract void write(JsonWriter writer, Object source)
-        throws IOException, IllegalAccessException;
+            throws IOException, IllegalAccessException;
 
     /** Read the value into the target array, used to provide constructor arguments for records */
     abstract void readIntoArray(JsonReader reader, int index, Object[] target)
-        throws IOException, JsonParseException;
+            throws IOException, JsonParseException;
 
     /**
      * Read the value from the reader, and set it on the corresponding field on target via
      * reflection
      */
     abstract void readIntoField(JsonReader reader, Object target)
-        throws IOException, IllegalAccessException;
+            throws IOException, IllegalAccessException;
   }
 
   /**
@@ -532,7 +532,7 @@ public final class ReflectiveTypeAdapterFactory implements TypeAdapterFactory {
      * the value for the BoundField to read from.
      */
     abstract void readField(A accumulator, JsonReader in, BoundField field)
-        throws IllegalAccessException, IOException;
+            throws IllegalAccessException, IOException;
 
     /** Convert the accumulator to a final instance of T. */
     abstract T finalize(A accumulator);
@@ -553,7 +553,7 @@ public final class ReflectiveTypeAdapterFactory implements TypeAdapterFactory {
 
     @Override
     void readField(T accumulator, JsonReader in, BoundField field)
-        throws IllegalAccessException, IOException {
+            throws IllegalAccessException, IOException {
       field.readIntoField(in, accumulator);
     }
 
@@ -624,15 +624,15 @@ public final class ReflectiveTypeAdapterFactory implements TypeAdapterFactory {
       Integer componentIndex = componentIndices.get(field.fieldName);
       if (componentIndex == null) {
         throw new IllegalStateException(
-            "Could not find the index in the constructor '"
-                + ReflectionHelper.constructorToString(constructor)
-                + "' for field with name '"
-                + field.fieldName
-                + "', unable to determine which argument in the constructor the field corresponds"
-                + " to. This is unexpected behavior, as we expect the RecordComponents to have the"
-                + " same names as the fields in the Java class, and that the order of the"
-                + " RecordComponents is the same as the order of the canonical constructor"
-                + " parameters.");
+                "Could not find the index in the constructor '"
+                        + ReflectionHelper.constructorToString(constructor)
+                        + "' for field with name '"
+                        + field.fieldName
+                        + "', unable to determine which argument in the constructor the field corresponds"
+                        + " to. This is unexpected behavior, as we expect the RecordComponents to have the"
+                        + " same names as the fields in the Java class, and that the order of the"
+                        + " RecordComponents is the same as the order of the canonical constructor"
+                        + " parameters.");
       }
       field.readIntoArray(in, componentIndex, accumulator);
     }
@@ -649,19 +649,19 @@ public final class ReflectiveTypeAdapterFactory implements TypeAdapterFactory {
       //  the wrong type
       catch (InstantiationException | IllegalArgumentException e) {
         throw new RuntimeException(
-            "Failed to invoke constructor '"
-                + ReflectionHelper.constructorToString(constructor)
-                + "' with args "
-                + Arrays.toString(accumulator),
-            e);
+                "Failed to invoke constructor '"
+                        + ReflectionHelper.constructorToString(constructor)
+                        + "' with args "
+                        + Arrays.toString(accumulator),
+                e);
       } catch (InvocationTargetException e) {
         // TODO: JsonParseException ?
         throw new RuntimeException(
-            "Failed to invoke constructor '"
-                + ReflectionHelper.constructorToString(constructor)
-                + "' with args "
-                + Arrays.toString(accumulator),
-            e.getCause());
+                "Failed to invoke constructor '"
+                        + ReflectionHelper.constructorToString(constructor)
+                        + "' with args "
+                        + Arrays.toString(accumulator),
+                e.getCause());
       }
     }
   }

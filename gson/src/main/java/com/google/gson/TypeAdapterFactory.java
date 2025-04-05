@@ -17,7 +17,7 @@
 package com.google.gson;
 
 import com.google.gson.reflect.TypeToken;
-
+import com.google.gson.api.TypeAdapterFactoryInterface;
 /**
  * Creates type adapters for set of related types. Type adapter factories are most useful when
  * several types share similar structure in their JSON form.
@@ -166,5 +166,6 @@ public interface TypeAdapterFactory {
   /**
    * Returns a type adapter for {@code type}, or null if this factory doesn't support {@code type}.
    */
+
   <T> TypeAdapter<T> create(Gson gson, TypeToken<T> type);
 }

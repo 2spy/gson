@@ -26,6 +26,7 @@ import java.io.Reader;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.io.Writer;
+import com.google.gson.api.AbstractTypeAdapter;
 
 /**
  * Converts Java objects to and from JSON.
@@ -118,7 +119,7 @@ import java.io.Writer;
 // TypeAdapter<Date>} can convert {@code Date} instances to JSON and JSON to
 // instances of {@code Date}, but cannot convert any other types.
 //
-public abstract class TypeAdapter<T> {
+public abstract class TypeAdapter<T> extends  AbstractTypeAdapter<T> {
 
   public TypeAdapter() {}
 
@@ -297,21 +298,13 @@ public abstract class TypeAdapter<T> {
 
   private final class NullSafeTypeAdapter extends TypeAdapter<T> {
     @Override
-    public void write(JsonWriter out, T value) throws IOException {
-      if (value == null) {
-        out.nullValue();
-      } else {
-        TypeAdapter.this.write(out, value);
-      }
+    public void write(Object out, T value) throws IOException {
+      write((JsonWriter) out, value);
     }
 
     @Override
-    public T read(JsonReader reader) throws IOException {
-      if (reader.peek() == JsonToken.NULL) {
-        reader.nextNull();
-        return null;
-      }
-      return TypeAdapter.this.read(reader);
+    public T read(Object in) throws IOException {
+      return read((JsonReader) in);
     }
 
     @Override
