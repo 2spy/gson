@@ -211,6 +211,11 @@ import java.util.Objects;
  * @since 1.6
  */
 public class JsonReader implements Closeable {
+
+  private static final int CONTROL_CHAR_END = 0x20;
+  private static final int MIN_BUILDER_CAPACITY = 16;
+  private static final int BUILDER_SIZE_MULTIPLIER = 2;
+
   private static final long MIN_INCOMPLETE_INTEGER = Long.MIN_VALUE / 10;
 
   private static final int PEEKED_NONE = 0;
@@ -951,23 +956,23 @@ public class JsonReader implements Closeable {
    * @throws IllegalStateException if the next token is not a string.
    */
   public String nextString() throws IOException {
-    int p = peeked;
-    if (p == PEEKED_NONE) {
-      p = doPeek();
+    int currentPosition = peeked;
+    if (currentPosition == PEEKED_NONE) {
+      currentPosition = doPeek();
     }
     String result;
-    if (p == PEEKED_UNQUOTED) {
+    if (currentPosition == PEEKED_UNQUOTED) {
       result = nextUnquotedValue();
-    } else if (p == PEEKED_SINGLE_QUOTED) {
+    } else if (currentPosition == PEEKED_SINGLE_QUOTED) {
       result = nextQuotedValue('\'');
-    } else if (p == PEEKED_DOUBLE_QUOTED) {
+    } else if (currentPosition == PEEKED_DOUBLE_QUOTED) {
       result = nextQuotedValue('"');
-    } else if (p == PEEKED_BUFFERED) {
+    } else if (currentPosition == PEEKED_BUFFERED) {
       result = peekedString;
       peekedString = null;
-    } else if (p == PEEKED_LONG) {
+    } else if (currentPosition == PEEKED_LONG) {
       result = Long.toString(peekedLong);
-    } else if (p == PEEKED_NUMBER) {
+    } else if (currentPosition == PEEKED_NUMBER) {
       result = new String(buffer, pos, peekedNumberLength);
       pos += peekedNumberLength;
     } else {
@@ -1122,57 +1127,54 @@ public class JsonReader implements Closeable {
    * consumes the closing quote, but does not include it in the returned string.
    *
    * @param quote either ' or ".
-   */
+   **/
   private String nextQuotedValue(char quote) throws IOException {
-    // Like nextNonWhitespace, this uses locals 'p' and 'l' to save inner-loop field access.
     char[] buffer = this.buffer;
     StringBuilder builder = null;
     while (true) {
-      int p = pos;
-      int l = limit;
-      /* the index of the first character not yet appended to the builder. */
-      int start = p;
-      while (p < l) {
-        int c = buffer[p++];
+      int currentPosition = pos;
+      int bufferLimit = limit;
+      int startIndex = currentPosition;
 
-        // In strict mode, throw an exception when meeting unescaped control characters (U+0000
-        // through U+001F)
-        if (strictness == Strictness.STRICT && c < 0x20) {
+      while (currentPosition < bufferLimit) {
+        int currentChar = buffer[currentPosition++];
+
+        if (strictness == Strictness.STRICT && currentChar < CONTROL_CHAR_END) {
           throw syntaxError(
-              "Unescaped control characters (\\u0000-\\u001F) are not allowed in strict mode");
-        } else if (c == quote) {
-          pos = p;
-          int len = p - start - 1;
+                  "Unescaped control characters (\\u0000-\\u001F) are not allowed in strict mode");
+        } else if (currentChar == quote) {
+          pos = currentPosition;
+          int length = currentPosition - startIndex - 1;
           if (builder == null) {
-            return new String(buffer, start, len);
+            return new String(buffer, startIndex, length);
           } else {
-            builder.append(buffer, start, len);
+            builder.append(buffer, startIndex, length);
             return builder.toString();
           }
-        } else if (c == '\\') {
-          pos = p;
-          int len = p - start - 1;
+        } else if (currentChar == '\\') {
+          pos = currentPosition;
+          int length = currentPosition - startIndex - 1;
           if (builder == null) {
-            int estimatedLength = (len + 1) * 2;
-            builder = new StringBuilder(Math.max(estimatedLength, 16));
+            int estimatedLength = length * BUILDER_SIZE_MULTIPLIER + BUILDER_SIZE_MULTIPLIER;
+            builder = new StringBuilder(Math.max(estimatedLength, MIN_BUILDER_CAPACITY));
           }
-          builder.append(buffer, start, len);
+          builder.append(buffer, startIndex, length);
           builder.append(readEscapeCharacter());
-          p = pos;
-          l = limit;
-          start = p;
-        } else if (c == '\n') {
+          currentPosition = pos;
+          bufferLimit = limit;
+          startIndex = currentPosition;
+        } else if (currentChar == '\n') {
           lineNumber++;
-          lineStart = p;
+          lineStart = currentPosition;
         }
       }
 
       if (builder == null) {
-        int estimatedLength = (p - start) * 2;
-        builder = new StringBuilder(Math.max(estimatedLength, 16));
+        int estimatedLength = (currentPosition - startIndex) * BUILDER_SIZE_MULTIPLIER;
+        builder = new StringBuilder(Math.max(estimatedLength, MIN_BUILDER_CAPACITY));
       }
-      builder.append(buffer, start, p - start);
-      pos = p;
+      builder.append(buffer, startIndex, currentPosition - startIndex);
+      pos = currentPosition;
       if (!fillBuffer(1)) {
         throw syntaxError("Unterminated string");
       }
